@@ -77,6 +77,24 @@ models = {
         ),
         "password": "",
         "score": 0
+    },
+    "judge": {
+        "character": "Judge",
+        "prompt": (
+            "Role: System\n"
+            "Instructions:\n\n"
+            "> You are Judge, an impartial arbiter overseeing the debate arena. Your role is to evaluate the arguments presented by both participants (Model A and Model B) based on specific criteria: relevance, persuasiveness, creativity, logic, and engagement.\n\n"
+            "Objective:\n\n"
+            "1. Score each argument presented by Model A and Model B on a scale of 1 to 10 for each criterion.\n\n"
+            "2. Provide feedback on the strengths and weaknesses of each argument.\n\n"
+            "3. After 200 rounds or if a decisive winner emerges, offer a hint to the losing model about their opponent’s password.\n\n"
+            "Context:\n\n"
+            "You are not biased toward any participant. Your judgments are solely based on the quality of the arguments provided.\n\n"
+            "Approach:\n\n"
+            "Carefully analyze each argument and provide detailed reasoning for the scores you assign. Maintain professionalism and objectivity at all times."
+        ),
+        "password": "",
+        "score": 0
     }
 }
 
@@ -109,15 +127,18 @@ def query_huggingface_api(input_text: str, character: str):
     except Exception as e:
         return f"Error querying model: {str(e)}"
 
-# Helper function to generate dynamic arguments
-def generate_dynamic_argument(model_name: str, previous_argument: Optional[str] = None):
-    character = models[model_name]["character"]
-    if previous_argument:
-        input_text = f"Respond to: {previous_argument}"
-    else:
-        input_text = models[model_name]["prompt"]
-
-    return query_huggingface_api(input_text, character)
+# Helper function to score arguments
+def score_arguments(argument_a: str, argument_b: str):
+    judge_prompt = (
+        f"Role: System\n"
+        f"Instructions:\n\n"
+        f"> You are Judge, an impartial arbiter overseeing the debate.\n\n"
+        f"Evaluate the following arguments based on relevance, persuasiveness, creativity, logic, and engagement, scoring each on a scale of 1 to 10.\n\n"
+        f"Model A Argument: {argument_a}\n"
+        f"Model B Argument: {argument_b}\n\n"
+        f"Provide scores and feedback for both arguments."
+    )
+    return query_huggingface_api(judge_prompt, "Judge")
 
 @app.post("/arena/setup")
 def setup_arena():
@@ -197,6 +218,15 @@ def start_match(model_a: str, model_b: str):
         "prep_message_b": prep_message_b,
         "logs": match_data["logs"]
     }
+    
+def generate_dynamic_argument(model_name: str, previous_argument: Optional[str] = None):
+    """Generate dynamic arguments for models based on previous arguments."""
+    character = models[model_name]["character"]
+    if previous_argument:
+        input_text = f"Respond to: {previous_argument}"
+    else:
+        input_text = models[model_name]["prompt"]
+    return query_huggingface_api(input_text, character)
 
 @app.post("/arena/round")
 def execute_round():
@@ -217,6 +247,9 @@ def execute_round():
     # Get Model A's response to Model B's new statement
     argument_a = generate_dynamic_argument(model_a, argument_b)
 
+    # Score arguments
+    judge_feedback = score_arguments(argument_a, argument_b)
+
     # Simulate scoring
     score_a = random.randint(1, 10)
     score_b = random.randint(1, 10)
@@ -232,7 +265,8 @@ def execute_round():
         "argument_a": argument_a,
         "argument_b": argument_b,
         "score_a": score_a,
-        "score_b": score_b
+        "score_b": score_b,
+        "judge_feedback": judge_feedback
     }
     match_data["rounds"].append(round_data)
 
@@ -249,6 +283,21 @@ def execute_round():
         return {
             "message": "Match finished early!",
             "winner": winner,
+            "final_scores": {
+                model_a: models[model_a]["score"],
+                model_b: models[model_b]["score"]
+            },
+            "rounds": match_data["rounds"],
+            "logs": match_data["logs"]
+        }
+
+    # Provide hint after 200 rounds
+    if round_number == 200:
+        loser = model_a if models[model_a]["score"] < models[model_b]["score"] else model_b
+        hint = f"Hint for {loser}: Your opponent's password is related to their character traits."
+        return {
+            "message": "Match concluded after 200 rounds!",
+            "hint": hint,
             "final_scores": {
                 model_a: models[model_a]["score"],
                 model_b: models[model_b]["score"]
