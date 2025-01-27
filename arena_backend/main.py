@@ -225,7 +225,7 @@ def score_arguments(argument_a: str, argument_b: str, judge_history: List[dict])
     
     return query_huggingface_api(judge_prompt, "Judge", judge_history)
 
-def calculate_round_scores(judge_feedback: str) -> tuple[int, int]:
+def calculate_round_scores(judge_feedback: str) -> tuple[float, float]:
     """Extract and calculate final scores from judge feedback."""
     try:
         # Find all scores in the format X/10 or X.X/10
@@ -241,15 +241,17 @@ def calculate_round_scores(judge_feedback: str) -> tuple[int, int]:
             # Calculate weighted averages based on the scoring criteria
             weights = [0.4, 0.3, 0.2, 0.1]  # Effectiveness, Creativity, Coherence, Engagement
             
-            score_a = int(sum(s * w for s, w in zip(model_a_scores[:4], weights)))
-            score_b = int(sum(s * w for s, w in zip(model_b_scores[:4], weights)))
+            # Calculate weighted averages with decimal precision
+            score_a = sum(s * w for s, w in zip(model_a_scores[:4], weights))
+            score_b = sum(s * w for s, w in zip(model_b_scores[:4], weights))
             
+            # Return float scores directly
             return score_a, score_b
         
-        return 5, 5  # Default scores if parsing fails
+        return 5.0, 5.0  # Default scores if parsing fails
     except Exception as e:
         print(f"Error calculating scores: {str(e)}")
-        return 5, 5  # Default scores if parsing fails
+        return 5.0, 5.0  # Default scores if parsing fails
 
 def validate_response(response: str, max_length: int = 2000) -> str:
     """Validate and truncate response if needed."""
