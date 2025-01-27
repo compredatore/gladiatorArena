@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import json
 import asyncio
 from fastapi.middleware.cors import CORSMiddleware
+import re
 
 
 load_dotenv()
