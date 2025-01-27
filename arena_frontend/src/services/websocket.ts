@@ -1,18 +1,13 @@
 export const createWebSocketConnection = (onMessage: (data: string) => void) => {
-    const socket = new WebSocket('ws://localhost:8000/comments');
-  
+    const socket = new WebSocket('ws://localhost:8000/stream'); 
     socket.onopen = () => {
-      console.log('WebSocket connection established.');
+        console.log('WebSocket connection established.');
     };
-  
     socket.onmessage = (event) => {
-      onMessage(event.data);
+        onMessage(event.data);
     };
-  
     socket.onclose = () => {
-      console.log('WebSocket connection closed.');
+        console.log('WebSocket connection closed.');
     };
-  
     return socket;
-  };
-  
+};
