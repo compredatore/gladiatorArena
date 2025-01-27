@@ -5,6 +5,9 @@ import random
 import os
 from dotenv import load_dotenv
 import json
+import asyncio
+from fastapi.middleware.cors import CORSMiddleware
+
 
 load_dotenv()
 
@@ -13,6 +16,14 @@ api_key = os.getenv("HF_API_KEY")
 app = FastAPI()
 
 client = InferenceClient(api_key=api_key)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Gerekirse burada belirli frontend URL'lerini kullanabilirsiniz
+    allow_credentials=True,
+    allow_methods=["*"],  # Tüm HTTP metodlarına izin ver
+    allow_headers=["*"],  # Tüm header'lara izin ver
+)
 
 # Promptları yükle
 with open("prompts.json", "r") as f:
@@ -98,9 +109,19 @@ def setup_arena():
     return {"message": "Arena setup complete!", "models": models}
 
 
+from pydantic import BaseModel
+
+# Pydantic modeli tanımlayın
+class StartMatchRequest(BaseModel):
+    model_a: str
+    model_b: str
+
 @app.post("/arena/start", response_model=None)
-async def start_match(model_a: str, model_b: str):
+async def start_match(request: StartMatchRequest):
     """Maçı başlat."""
+    model_a = request.model_a
+    model_b = request.model_b
+
     if model_a not in models or model_b not in models:
         return {"error": "Invalid model names."}
 
@@ -117,7 +138,6 @@ async def start_match(model_a: str, model_b: str):
     intro_b = f"{models[model_b]['character']} joins the battle!"
 
     return {"message": "Match started!", "model_a": model_a, "model_b": model_b}
-
 
 @app.post("/arena/round", response_model=None)
 async def execute_round():
@@ -178,12 +198,15 @@ async def execute_round():
 async def stream_updates(websocket: WebSocket):
     """Maç güncellemelerini yayınla."""
     await websocket.accept()
-    match_data["websocket_clients"].append(websocket)
     try:
         while True:
-            # WebSocket bağlantısını açık tut
-            pass
+            # Eğer rounds doluysa, son round'u gönder
+            if match_data["rounds"]:
+                await websocket.send_json(match_data["rounds"][-1])
+            
+            # Bağlantıyı açık tutmak için biraz bekle
+            await asyncio.sleep(1)
     except Exception as e:
         print(f"WebSocket error: {e}")
     finally:
-        match_data["websocket_clients"].remove(websocket)
+        await websocket.close()

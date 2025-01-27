@@ -8,9 +8,12 @@ export const setupArena = async () => {
 };
 
 export const startMatch = async (modelA: string, modelB: string) => {
-  const response = await axios.post(`${API_BASE_URL}/arena/start`, { model_a: modelA, model_b: modelB });
-  return response.data;
-};
+    const response = await axios.post(`${API_BASE_URL}/arena/start`, {
+      model_a: modelA,
+      model_b: modelB,
+    });
+    return response.data;
+  };
 
 export const executeRound = async () => {
   const response = await axios.post(`${API_BASE_URL}/arena/round`);
