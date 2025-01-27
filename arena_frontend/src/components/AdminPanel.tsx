@@ -13,13 +13,21 @@ const AdminPanel: React.FC = () => {
     const ws = new WebSocket('ws://127.0.0.1:8000/stream');
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      setRounds((prevRounds) => [...prevRounds, data]);
+  
+      // Eğer bu round zaten eklenmişse, tekrar ekleme
+      setRounds((prevRounds) => {
+        if (prevRounds.some((round) => round.round === data.round)) {
+          return prevRounds;
+        }
+        return [...prevRounds, data];
+      });
+  
       setLogs((prevLogs) => [...prevLogs, `New round: ${data.round}`]);
     };
     ws.onopen = () => setLogs((prev) => [...prev, 'WebSocket connection established.']);
     ws.onclose = () => setLogs((prev) => [...prev, 'WebSocket connection closed.']);
     ws.onerror = (error) => console.error('WebSocket error:', error);
-
+  
     setWebSocket(ws);
   };
 

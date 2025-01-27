@@ -198,10 +198,13 @@ async def execute_round():
 async def stream_updates(websocket: WebSocket):
     """Maç güncellemelerini yayınla."""
     await websocket.accept()
+    last_sent_round = -1  # En son gönderilen round numarasını takip etmek için
+
     try:
         while True:
-            # Eğer rounds doluysa, son round'u gönder
-            if match_data["rounds"]:
+            # Eğer yeni bir round varsa, sadece yeni round'u gönder
+            if match_data["rounds"] and match_data["rounds"][-1]["round"] > last_sent_round:
+                last_sent_round = match_data["rounds"][-1]["round"]
                 await websocket.send_json(match_data["rounds"][-1])
             
             # Bağlantıyı açık tutmak için biraz bekle
