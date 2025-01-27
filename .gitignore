@@ -3,6 +3,8 @@ node_modules/
 
 # Python
 venv/
+.venv/
+.python-version
 
 # .env 
 .env
